@@ -1,0 +1,30 @@
+Version : 3.5.6
+Image description 
+
+Exposure : 7.78 ms
+Black Level : -60.00
+Frame Rate : 51.00 FPS
+
+Model : PRO-CMS-83684-C001
+Camera SN : CMS25030452
+FWHM (nm) : 48 36 31 28 26 25 25 23 23 21 
+Filter's centering (nm) : 411 463 500 557 606 667 694 756 808 870 
+Size image raw : 2048 x 2048
+Size channel : 512 x 512
+Coefficients channel normalizer : 1 1 1 1 1 1 1 1 1 1 
+Crosstalk correction : False
+Coefficients white balance : 1 1 1
+
+Output :
+	Raw		tiff	full depth
+	Color		tiff	full depth
+	Channel		tiff 9	full depth
+	Processed	png	8 bits
+
+
+Image :
+Index	|		Date			|		Name
+00002	|	2025.12.03_14:48:14.963		|		FirstTests_00000001
+00003	|	2025.12.03_14:48:17.349		|		FirstTests_00000002
+00004	|	2025.12.03_14:48:18.856		|		FirstTests_00000003
+00005	|	2025.12.03_14:48:19.050		|		FirstTests_00000004
