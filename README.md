@@ -118,10 +118,12 @@ The pipeline includes safety nets for specific edge cases:
 ## 🚀 How to Use the Pipeline
 
 ### Step 1: Data Acquisition
+
 1. Set Color Shades output folder to C:/CROPSENSE/INBOX.
 2. Set the base filename to the Plant ID (e.g., P01_).
-3. Capture images.
-4. Copy Workswell thermal files to the same INBOX folder.
+3. Make sure both your cameras have the right date and hour
+4. Capture images.
+5. Copy Workswell thermal files to the same INBOX folder.
 
 ### Step 2: Run the Script
 
@@ -155,8 +157,18 @@ show_thermal_image("path/to/thermo.tiff")
 - **"Unclassified file skipped"** : The filename likely contains forbidden characters or doesn't start with a letter.
 - **"Thermal: 0 files linked"** : The time difference between the Spectral and Thermal photo was greater than 300 seconds. Check camera clocks.
 
+
+
 # Release :
 
+
+## V1.2.1 : 14/12/2025
+Now csv file can be generated from histogram and profile
+## V1.2 : 13/12/2025
+Full histogram integration.
+## V1.1 : 13/12/2025 
+Fixed an issue where any thermic files could be associated with a spectral file, no matter the id.
+Now thermic files can be send apart from spectral files
 ## V1 : 11/12/2025
 
 Author : Antoine Herbaux
