@@ -1,7 +1,7 @@
-# CROPSENSE Data Processing Platform (V1)
+# CROPSENSE Data Processing Platform (V1.2.1)
 
 ## 📌 Project Overview
-  Version: 1.0
+  Version: 1.2.1
   
   Context: CROPSENSE Project - Phase 1
   
@@ -127,36 +127,214 @@ The pipeline includes safety nets for specific edge cases:
 
 ### Step 2: Run the Script
 
-Open your Jupyter Notebook (CROPSENSE.ipynb) or Python script and execute the main function:
-```Python
+Open your Jupyter Notebook (`CROPSENSE.ipynb`) or Python script and execute the main function:
+```python
 run_pipeline()
 ```
 
-What happens next?
+#### 🔄 How the File Linking Works (The "Fusion" Logic)
+The pipeline uses a **temporal clustering algorithm** to automatically link your Spectral and Thermal images. It does not rely on filenames matching perfectly, but rather on the **timestamps** of the files.
 
-1. Ingestion: Files are moved from INBOX to `CROPSENSE_DATA/{Date}/{PlantID}/{Sensor}/`.
-2. Processing: Spectral images are demosaiced; histograms are calculated.
-3. Fusion: Thermal files are found and linked based on time.
-4. Storage: Everything is saved to MongoDB.
+1.  Trigger: The process starts when the script finds a raw spectral image (e.g., `.../P01/Spectral/image_raw.tiff`).
+2.  Target Search: It calculates the creation time of that spectral image. Then, it looks into the corresponding `Thermal` folder for that specific Plant ID (e.g., `.../P01/Thermal/`).
+3.  Time Matching: It scans all files in that thermal folder and selects those captured within a **±300 seconds (5 minutes)** tolerance window of the spectral image.
+4.  Clustering: It groups the following 4 file types together into a single database entry "event":
+    * Visual RGB: (Standard camera photo from the thermal sensor)
+    * Radiometric JPEG: (Thermal image with embedded temperature data)
+    * Raw Thermal TIFF: (Raw temperature data matrix)
+    * CWSI TIFF: (Crop Water Stress Index map)
 
-### Step 3: Visualization & Check
-You can verify the data using the provided tools:
-```Python
-# Check database integrity for a specific plant
+> **Note:** If a thermal file is found but is outside the 5-minute window, it is considered an "Independent Thermal Event" and saved separately.
+
+
+### Step 3: Visualization & Analysis Tools
+
+You can verify the data using the provided visualization functions. These tools allow you to inspect the quality of the data directly from the raw files or the database exports.
+
+#### 1. Database Diagnosis
+**Function:** `check_database_integrity(plant_id)`
+* **What it does:** Verifies that the files for a specific plant have been correctly uploaded to the MongoDB GridFS storage.
+* **Output:** It prints a report showing the file size and ID for the Spectral RAW file and all 4 linked Thermal files.
+```python
 check_database_integrity("P01")
-
-# Visualize a specific spectral band (e.g., Red Edge)
-show_spectral_channel("path/to/image.tiff", wavelength=756)
-
-# Visualize a thermal map
-show_thermal_image("path/to/thermo.tiff")
 ```
 
-## ⚠️ Troubleshooting
-- **"No database accessible"** : Check if MongoDB service is running or if the Server IP in the script (URIS_TO_TRY) is correct.
-- **"Unclassified file skipped"** : The filename likely contains forbidden characters or doesn't start with a letter.
-- **"Thermal: 0 files linked"** : The time difference between the Spectral and Thermal photo was greater than 300 seconds. Check camera clocks.
+#### 2. Spectral Channel Inspection
+**Function:** `show_spectral_channel(filepath, wavelength=756)`
+* **What it does:** Extracts and displays a *single* specific band from the multispectral TIFF.
+* **Features:**
+    * You can select the band by index (`0-9`) or by wavelength (e.g., `wavelength=756` for Red Edge).
+    * It automatically handles Raw Mosaics (by demosaicing on the fly) or pre-processed 3D Stacks.
+    * Displays a heat map of pixel intensity.
+```python
+show_spectral_channel("path/to/spectral_raw.tiff", wavelength=557) # Green Peak
+```
 
+#### 3. Thermal Image Analysis
+**Function:** `show_thermal_image(filepath)`
+* **What it does:** Renders the 16-bit raw thermal data into a viewable color map.
+* **Features:**
+    * **Temperature Mode:** Uses the 'Magma' palette (Black/Purple=Cold, Orange/Yellow=Hot).
+    * **CWSI Mode:** Automatically detects Crop Water Stress Index files and uses a 'Red-Green' traffic light palette (Red=High Stress).
+    * **Statistics:** Prints the Min, Max, and Mean temperature (or index value) of the image.
+```python
+show_thermal_image("path/to/thermal_raw.tiff")
+```
+
+#### 4. Exposure Check (Single Band)
+**Function:** `plot_image_histogram(filepath, band_index, bins, log_scale)`
+* **What it does:** Plots the distribution of pixel intensities for a single band or thermal image.
+* **Why use it:** To check for under-exposure (too dark) or saturation (too bright/clipped pixels) in a specific wavelength.
+```python
+# Check the exposure of the Near Infrared band (Band 9)
+plot_image_histogram("path/to/spectral.tiff", band_index=9)
+```
+
+#### 5. Full Spectral Quality Check
+**Function:** `plot_full_spectral_histogram(filepath, mode='overlay')`
+* **What it does:** Analyzes the dynamic range of the *entire* multispectral cube.
+* **Modes:**
+    * `'overlay'`: Plots 10 separate lines (one per band) on the same graph to compare sensor response across wavelengths.
+    * `'global'`: Aggregates all pixels into one giant histogram to see overall sensor usage.
+```python
+plot_full_spectral_histogram("path/to/spectral.tiff", mode='overlay')
+```
+
+#### 6. Spectral Signature (Reflectance Profile)
+**Function:** `plot_spectral_profile(filepath, smooth=True)`
+* **What it does:** Calculates the mean intensity of the plant for each of the 10 wavelengths and plots the curve.
+* **Why use it:** This is the "fingerprint" of the plant. Healthy plants typically show a "Green Peak" at 557nm and a sharp rise in the "Red Edge" (756nm+).
+```python
+plot_spectral_profile("path/to/spectral.tiff")
+```
+
+#### 7. Data Export
+**Function:** `export_analysis_to_csv(filepath, output_csv, analysis_type)`
+* **What it does:** Instead of a graph, this generates a CSV file with the raw numerical data, which you can open in Excel.
+* **Options:**
+    * `analysis_type='profile'`: Exports the Spectral Signature (Wavelength vs Intensity).
+    * `analysis_type='histogram'`: Exports the histogram counts for all 10 bands.
+```python
+export_analysis_to_csv("path/to/image.tiff", "my_results.csv", analysis_type="profile")
+```
+
+## ❓ Quick Helper / Cheat Sheet
+
+Here are the answers to the most common questions when using the CROPSENSE pipeline.
+
+### 1. How do I process my data and put it into the database?
+**Answer:** Put your files in the `INBOX` folder and run the main pipeline.
+```python
+run_pipeline()
+```
+
+### 2. How do I verify if a specific plant (e.g., P01) was saved correctly?
+**Answer:** Use the integrity check function with the Plant ID.
+```python
+check_database_integrity("P01")
+```
+
+### 3. How do I view a specific spectral band (like Red Edge or Green)?
+**Answer:** Use `show_spectral_channel`. You can specify the wavelength (e.g., 557 for Green, 756 for Red Edge).
+```python
+show_spectral_channel("path/to/spectral.tiff", wavelength=756)
+```
+
+### 4. How can I see the Thermal or Water Stress (CWSI) map?
+**Answer:** Use `show_thermal_image`. It automatically detects if it's a temperature map or a CWSI traffic-light map.
+```python
+show_thermal_image("path/to/thermal.tiff")
+```
+
+### 5. How do I check if my photo is too dark (underexposed) or too bright (saturated)?
+**Answer:** Plot the histogram for that specific band. If the curve touches the left (0) it's too dark; if it touches the right, it's saturated.
+```python
+# Check Band 9 (NIR)
+plot_image_histogram("path/to/spectral.tiff", band_index=9)
+```
+
+### 6. How can I see the spectral signature of the plant?
+**Answer:** Use the profile plotter to see the curve of intensity across all 10 wavelengths.
+```python
+plot_spectral_profile("path/to/spectral.tiff")
+```
+
+### 7. How do I compare the quality of all 10 bands at once?
+**Answer:** Use the full spectral histogram in 'overlay' mode.
+```python
+plot_full_spectral_histogram("path/to/spectral.tiff", mode='overlay')
+```
+
+### 8. How do I get the data out of Python and into Excel?
+**Answer:** Use the export function to save the analysis as a CSV file.
+```python
+export_analysis_to_csv("path/to/image.tiff", output_csv="my_data.csv", analysis_type="profile")
+```
+
+### 9. Why are my Thermal files not showing up with the Spectral ones?
+**Answer:** The script links them based on time. They must be taken within **5 minutes (300 seconds)** of the spectral photo. If they are further apart, they are saved as "Independent Thermal Events".
+
+### 10. Where do my files go after I run the script?
+**Answer:** They are moved from the `INBOX` to the `CROPSENSE_DATA` folder, organized by Date, Plant ID, and Sensor type:
+`CROPSENSE_DATA / 2023-12-10 / P01 / Spectral / ...`
+
+### 11. My files are being skipped / ignored. How should I name them?
+**Answer:** The pipeline uses strict pattern matching. Your files **MUST** start with the Plant ID, followed by the Date and Time.
+* **Format:** `PlantID_YYYYMMDD_HHMMSS_....tiff`
+* **Example:** `P01_20231210_143000_raw.tiff`
+* **Bad Name:** `image_01.tiff` (This will be ignored).
+
+### 12. Can I change the 5-minute time window for linking Thermal images?
+**Answer:** Yes. Open `CROPSENSE.ipynb` and search for the `find_thermal_cluster` function.
+Change the `tolerance` value (in seconds):
+
+```python
+# Change 300 (5 mins) to 60 (1 min) or 600 (10 mins)
+def find_thermal_cluster(..., tolerance=300):
+```
+
+### 13. How do I delete a specific plant or bad entry from the database?
+Answer: The script does not delete data to prevent accidents. To delete data:
+1. Open MongoDB Compass.
+2. Navigate to the CROPSENSE_DB database.
+3. Find the document with the specific plant_id and timestamp.
+4. Click the trash icon to remove it manually.
+
+### 14. My Thermal files don't have a prefix (e.g., just 20231210...). How do I add the Plant ID?
+Answer: You can use the batch rename tool to add a prefix to all files in a folder. This is useful if your camera saves files without the plant name.
+
+```python
+
+# Add "P01_" to all files in the thermal folder
+# This changes "20231210.tiff" -> "P01_20231210.tiff"
+rename_batch_prefix("C:/CROPSENSE/INBOX/Thermal", old_prefix="", new_prefix="P01")
+
+```
+
+### 15. I'm getting a connection timeout error with MongoDB. What should I do?
+
+**Answer:** Check that MongoDB is running.
+
+**Important:** The script is configured to try multiple addresses (`URIS_TO_TRY`).
+
+> **Special Note:** If you are on the school network (e.g., Junia), the firewall may be blocking the connection. Try using `localhost` or a connection outside the school domain.
+
+### 16. Can I change the location of the folders (INBOX, Data)?
+
+**Answer:** Yes, the paths are defined at the beginning of the script.
+
+Find and modify these variables in the first cell of code:
+```python
+BASE_DIR = "C:/CROPSENSE" # Change this to your disk (e.g., "D:/PROJET")
+INBOX_DIR = os.path.join(BASE_DIR, "INBOX")
+```
+### 17. Does the script work with standard JPG or PNG images?
+
+**Answer:** No. The pipeline, as for now, is designed specifically for scientific analysis.
+
+Spectral: Requires .tiff (16-bit) files.
+Thermal: Requires .tiff (raw data) or radiometric (Workswell) .jpg files.
+Standard images (phone photos) will be ignored or will cause errors during spectral analysis.
 
 
 # Release :
