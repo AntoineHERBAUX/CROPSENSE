@@ -1,0 +1,8 @@
+--- INDICE CUSTOMISÉ : WHEAT_YELLOW_RUST_INDEX ---
+Formule : (GREEN * RED) / (NIR * RED_EDGE + 1e-6)
+
+Longueurs d'onde utilisées :
+ - NIR : 800 nm (Bande n°150)
+ - GREEN : 550 nm (Bande n°58)
+ - RED : 670 nm (Bande n°102)
+ - RED_EDGE : 705 nm (Bande n°115)
