@@ -27,7 +27,7 @@ You need Python 3.10+ and a MongoDB server running.
   
 #### Install Python Libraries:
 Open your terminal (Command Prompt) and run: 
-`pip install numpy pandas pymongo matplotlib opencv-python tifffile imagecodecs spectral scipy --user`
+`pip install numpy pandas pymongo matplotlib opencv-python tifffile imagecodecs spectral scipy scikit-learn --user`
 
 #### Setup MongoDB: 
 1. Install MongoDB Community Server.
