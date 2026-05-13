@@ -250,8 +250,9 @@ Here are the answers to the most common questions when using the CROPSENSE pipel
 
 ## 📅 Release History
 
-### V2.0 : 14/12/2025
+### V2.0 : 23/04/2026
 * Hyperspectral fully implemented and improved file naming rules.
+* CROPSENSE_ML_Test.ipynb contains tests models integration
 
 ### V1.2.1 : 14/12/2025
 * Now csv file can be generated from histogram and profile.
